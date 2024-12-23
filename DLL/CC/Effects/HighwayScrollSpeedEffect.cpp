@@ -1,3 +1,4 @@
+#include "../../stdafx.h"
 #include "HighwayScrollSpeedEffect.hpp"
 
 using namespace CrowdControl::Enums;
@@ -68,6 +69,6 @@ namespace CrowdControl::Effects {
 
 		_LOG("HighwayScrollSpeedEffect::WriteScrollSpeedMultiplier(" << val << ")" << std::endl);
 
-		MemUtil::SetStaticValue(Offsets::ptr_scrollSpeedMultiplier, val, sizeof(double));
+		MemUtil::SetStaticValue(Offsets::ptr_scrollSpeedMultiplier.Get(), val, sizeof(double));
 	}
 }

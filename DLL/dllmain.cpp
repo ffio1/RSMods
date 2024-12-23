@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "Main.hpp"
 
 #ifdef _DEBUG
@@ -13,7 +14,7 @@ bool wwiseLogging = false; // You are NOT on a Wwise logging build.
 #endif
 
 #ifndef _RSMODS_VERSION
-#define _RSMODS_VERSION "RSMODS Version: 1.2.7.4 SRC. DEBUG: " << std::boolalpha << debug << ". Wwise Logs: " << std::boolalpha << wwiseLogging << "."
+#define _RSMODS_VERSION "RSMODS Version: 1.2.8.0 SRC. DEBUG: " << std::boolalpha << debug << ". Wwise Logs: " << std::boolalpha << wwiseLogging << "."
 #endif
 
 /// <summary>
@@ -551,7 +552,7 @@ HRESULT APIENTRY D3DHooks::Hook_EndScene(IDirect3DDevice9* pDevice) {
 	HRESULT hRet = oEndScene(pDevice); // Get real result so we can call it later.
 	uint32_t returnAddress = (uint32_t)_ReturnAddress(); // EndScene is called both by the game and by Steam's overlay renderer, and there's no need to draw our stuff twice
 
-	if (returnAddress > Offsets::baseEnd)
+	if (returnAddress > Offsets::baseEnd.Get())
 		return hRet;
 
 	// Has this been ran before (AKA run only once, at startup)
@@ -966,7 +967,7 @@ Wwise::SoundEngine::SetRTPCValue("P1_InputVol_Calibration_Return", NewInputVolum
 
 		// Regenerate Twitch Solid Note Color for a new color
 		if (D3DHooks::regenerateUserDefinedTexture) {
-			Color userDefColor = Settings::ConvertHexToColor(Settings::ReturnSettingValue("SolidNoteColor"));
+			RSColor userDefColor = Settings::ConvertHexToColor(Settings::ReturnSettingValue("SolidNoteColor"));
 			//unsigned int red = userDefColor.r * 255, green = userDefColor.g * 255, blue = userDefColor.b * 255;
 			//D3D::GenerateSolidTexture(pDevice, &twitchUserDefinedTexture, D3DCOLOR_ARGB(255, red, green, blue));
 
@@ -1003,12 +1004,9 @@ std::string D3DHooks::ConvertFloatTimeToStringTime(float timeInSeconds) {
 /// </summary>
 void PatchTwoRTC()
 {
-	MemUtil::PatchAdr((LPVOID)Offsets::ptr_twoRTCBypass, (LPVOID)Offsets::ptr_twoRTCBypass_patch_call, 5);
-	MemUtil::PatchAdr((LPVOID)(Offsets::ptr_twoRTCBypass + 5), (LPVOID)Offsets::ptr_twoRTCBypass_patch_test, 2);
-	MemUtil::PatchAdr((LPVOID)(Offsets::ptr_twoRTCBypass + 7), (LPVOID)Offsets::ptr_twoRTCBypass_patch_jz, 2);
-	MemUtil::PatchAdr((LPVOID)(Offsets::ptr_twoRTCBypass + 9), (LPVOID)Offsets::ptr_twoRTCBypass_patch_mov, 5);
-	MemUtil::PatchAdr((LPVOID)(Offsets::ptr_twoRTCBypass + 14), (LPVOID)Offsets::ptr_twoRTCBypass_patch_lea, 6);
-	MemUtil::PatchAdr((LPVOID)(Offsets::ptr_twoRTCBypass + 20), (LPVOID)Offsets::ptr_twoRTCBypass_patch_call, 5);
+	BYTE patch[25];
+	std::fill_n(patch, 25, 0x90);
+	MemUtil::PatchAdr(Offsets::ptr_twoRTCBypass, patch, sizeof(patch));;
 }
 
 /// <summary>
@@ -1304,8 +1302,7 @@ unsigned WINAPI MainThread() {
 	
 	// Initialize Functions
 	D3DHooks::debug = debug;
-	Offsets::Initialize();
-	MemUtil::PatchAdr((char*)0x0041C640, "\xE0", 1); // Patches out function in Rocksmith.
+	MemUtil::PatchAdr(Offsets::ptr_ModdedPtrCrashFix, "\xE0", 1, true); // Fixes crash when modifying functions in Rocksmith.
 	Settings::Initialize();
 	UpdateSettings();
 	ERMode::Initialize();
@@ -1328,10 +1325,6 @@ unsigned WINAPI MainThread() {
 	if (Settings::ReturnSettingValue("FixOculusCrash") == "on")
 		BugPrevention::PreventOculusCrash();
 
-#ifdef _FIX_STORE
-	MemUtil::PatchAdr((void*)Offsets::steamApiUri, "%s://localhost:5154/api/requests/%d,%s,%s", 42); // Proxy available here: https://github.com/ffio1/SteamAPIProxy
-#endif
-
 	// AltOutputSampleRate mod.
 	// We have to do this early in execution as we need to change it before the audio engine starts up.
 	if (Settings::ReturnSettingValue("AltOutputSampleRate") == "on" && Settings::GetModSetting("AlternativeOutputSampleRate") != 48000) {
@@ -1343,7 +1336,8 @@ unsigned WINAPI MainThread() {
 	// Look to see if RS_ASIO applied the 2 RTC input bypass.
 	// If they did, then we disregard the results from our version of the mod.
 	
-	bool rs_asio_BypassTwoRTC = MemUtil::ReadPtr(Offsets::ptr_twoRTCBypass) == 0x90909090;
+	//bool rs_asio_BypassTwoRTC = MemUtil::ReadPtr(Offsets::ptr_twoRTCBypass) == 0x90909090;
+	bool rs_asio_BypassTwoRTC = false;
 	_LOG("RS_ASIO Bypass2RTC: " << std::boolalpha << rs_asio_BypassTwoRTC << std::endl);
 	if (Settings::ReturnSettingValue("BypassTwoRTCMessageBox") == "on")
 		PatchTwoRTC();
@@ -1391,11 +1385,11 @@ unsigned WINAPI MainThread() {
 			if (!rs_asio_BypassTwoRTC) { 
 
 				// User originally had BypassTwoRTCMessageBox on, but now they want it turned off.
-				if (Settings::ReturnSettingValue("BypassTwoRTCMessageBox") == "off" && *(char*)Offsets::ptr_twoRTCBypass == Offsets::ptr_twoRTCBypass_patch_call[0]) 
-					MemUtil::PatchAdr((LPVOID)Offsets::ptr_twoRTCBypass, (LPVOID)Offsets::ptr_twoRTCBypass_original, 6);
+				if (Settings::ReturnSettingValue("BypassTwoRTCMessageBox") == "off" && *(char*)Offsets::ptr_twoRTCBypass.Get() == Offsets::ptr_twoRTCBypass_patch_call[0])
+					MemUtil::PatchAdr(Offsets::ptr_twoRTCBypass, (LPVOID)Offsets::ptr_twoRTCBypass_original, 6);
 
 				// User originally had BypassTwoRTCMessageBox off, but now they want it turned on
-				else if (Settings::ReturnSettingValue("BypassTwoRTCMessageBox") == "on" && *(char*)Offsets::ptr_twoRTCBypass == Offsets::ptr_twoRTCBypass_original[0])
+				else if (Settings::ReturnSettingValue("BypassTwoRTCMessageBox") == "on" && *(char*)Offsets::ptr_twoRTCBypass.Get() == Offsets::ptr_twoRTCBypass_original[0])
 					PatchTwoRTC();
 			}
 
@@ -1655,15 +1649,17 @@ unsigned WINAPI MainThread() {
 			// It is only used while the game boots, else the game may crash.
 			currentMenu = MemHelpers::GetCurrentMenu(true); 
 
+			_LOG("Menu Loop: " << currentMenu << std::endl);
+
 			// Have We Loaded? Or has the user opened a new user profile?
 			// This prevents the user from being locked in a loop.
-			if (currentMenu == "MainMenu" || currentMenu == "PlayedRS1Select") 
+			if (currentMenu.compare("MainMenu") == 0 || currentMenu.compare("PlayedRS1Select") == 0 || currentMenu.compare("SimpleDialog") == 0)
 				GameLoaded = true;
 
 			// Set buffer settings if the user uses an alternative sample rate on their audio output.
-			if (Settings::ReturnSettingValue("AltOutputSampleRate") == "on" && Settings::GetModSetting("AlternativeOutputSampleRate") != 48000 && *(int*)Offsets::ptr_sampleRateBuffer != 5 && *(int*)Offsets::ptr_sampleRateBuffer != 2) {
-				*(int*)Offsets::ptr_sampleRateSize = 2;
-				*(int*)Offsets::ptr_sampleRateBuffer = 128;
+			if (Settings::ReturnSettingValue("AltOutputSampleRate") == "on" && Settings::GetModSetting("AlternativeOutputSampleRate") != 48000 && *(int*)Offsets::ptr_sampleRateBuffer.Get() != 5 && *(int*)Offsets::ptr_sampleRateBuffer.Get() != 2) {
+				MemUtil::SetStaticValue(Offsets::ptr_sampleRateSize.Get(), 2, sizeof(int));
+				MemUtil::SetStaticValue(Offsets::ptr_sampleRateBuffer.Get(), 128, sizeof(int));
 			}
 				
 			// Auto Load Profile. AKA "Fork in the toaster".
@@ -1700,14 +1696,17 @@ unsigned WINAPI MainThread() {
 void Initialize() {
 	LogSettings::startupTime = clock();
 
-	std::thread(MainThread).detach(); // Mod Toggle based on menus
-	std::thread(EnumerationThread).detach(); // Force Enumeration
-	std::thread(HandleEffectQueueThread).detach(); // Twitch Effects
-	std::thread(MidiThread).detach(); // MIDI Auto Tuning / True Tuning
-	std::thread(RiffRepeaterThread).detach(); // RR Speed Above 100% Log
+	Offsets::Initialize();
+	Wwise::Exports::Initialize();
+
+	//std::thread(MainThread).detach(); // Mod Toggle based on menus
+	//std::thread(EnumerationThread).detach(); // Force Enumeration
+	//std::thread(HandleEffectQueueThread).detach(); // Twitch Effects
+	//std::thread(MidiThread).detach(); // MIDI Auto Tuning / True Tuning
+	//std::thread(RiffRepeaterThread).detach(); // RR Speed Above 100% Log
 
 	// Probably check ini setting before starting this thing
-	CrowdControl::StartServer(); // Twitch Effects Server
+	//CrowdControl::StartServer(); // Twitch Effects Server
 }
 
 /// <summary>

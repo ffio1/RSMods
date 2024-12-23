@@ -1,22 +1,6 @@
 #pragma once
 
-#include "windows.h"
-#include <vector>
-#include <string>
-#include <fstream>
-#include <filesystem>
-#include <codecvt>
-
-#include "Log.hpp"
-#include "Lib/DirectX/d3dx9.h"
-#include "Lib/DirectX/d3d9types.h"
-#include "Lib/Json/json.hpp"
-#include "D3D/D3DHooks.hpp"
-
-#include "MemUtil.hpp"
-#include "Offsets.hpp"
 #include "Structs.hpp"
-#include "Settings.hpp"
 
 namespace MemHelpers {
 	byte getLowestStringTuning();

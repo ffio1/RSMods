@@ -1,7 +1,5 @@
 #pragma once
-#include "../CCEffect.hpp"
 #include "../../Mods/ExtendedRangeMode.hpp"
-#include "../CCEffectList.hpp"
 
 namespace CrowdControl::Effects {
 	// Changes current note heads to a custom generated texture

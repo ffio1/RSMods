@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "MemHelpers.hpp"
 
 /// <summary>
@@ -248,7 +249,6 @@ bool MemHelpers::IsExtendedRangeTuner() {
 		return true;
 	}
 
-
 	// Does the user's settings allow us to toggle Exteneded Range Mode for this tuning
 	if (lowestTuning <= Settings::GetModSetting("ExtendedRangeMode") && (!inDrop || lowestTuning <= Settings::GetModSetting("ExtendedRangeMode") - 2)) {
 		_LOG("Successful: IsExtendedRangeTuner in standard where " << lowestTuning << " is less than, or equal to, " << Settings::GetModSetting("ExtendedRangeMode") << " minus 2. Drop Tuned: " << std::boolalpha << inDrop << std::endl);
@@ -428,13 +428,12 @@ int MemHelpers::GetTrueTuning() {
 	return trueTuning;
 }
 
-
 /// <param name="GameNotLoaded"> - Should we trust the pointer?</param>
 /// <returns>Internal Menu Name</returns>
 std::string MemHelpers::GetCurrentMenu(bool GameNotLoaded) {
 	_LOG_INIT;
 
-	_LOG_SETLEVEL(LogLevel::Error);
+	bool failedToReadPreMainMenuAddr = false;
 
 	// It seems like the third level of the pointer isn't initialized until you reach the UPLAY login screen,
 	// but the second level actually is, and in there it keeps either an empty string, "TitleMenu", "MainOverlay"
@@ -442,30 +441,39 @@ std::string MemHelpers::GetCurrentMenu(bool GameNotLoaded) {
 	if (GameNotLoaded) {
 		uintptr_t preMainMenuAdr = MemUtil::FindDMAAddy(Offsets::ptr_currentMenu, Offsets::ptr_preMainMenuOffsets, GameNotLoaded);
 
-		std::string currentMenu((char*)preMainMenuAdr);
+		if (preMainMenuAdr)
+		{
+			// I.e. check if its neither one of the possible states
+			std::string currentMenu((char*)preMainMenuAdr);
 
-		// I.e. check if its neither one of the possible states
-		if (lastMenu == "TitleScreen" && lastMenu != currentMenu)
-			canGetRealMenu = true;
-		else {
-			lastMenu = currentMenu;
-			return "pre_enter_prompt";
+			if (lastMenu == "TitleScreen" && lastMenu != currentMenu)
+				canGetRealMenu = true;
+			else {
+				lastMenu = currentMenu;
+				return "pre_enter_prompt";
+			}
+		}
+		else
+		{
+			//_LOG_SETLEVEL(LogLevel::Info);
+			//_LOG("Invalid Pointer: GetCurrentMenu(" << std::boolalpha << GameNotLoaded << ") @ LVL 2" << std::endl);
+			failedToReadPreMainMenuAddr = true;
 		}
 	}
 
-	if (!canGetRealMenu)
-		return "pre_enter_prompt";
-
 	// If game hasn't loaded, take the safer, but possibly slower route
-	uintptr_t currentMenuAdr = MemUtil::FindDMAAddy(Offsets::ptr_currentMenu, Offsets::ptr_currentMenuOffsets, GameNotLoaded);
+
+	uintptr_t currentMenuAddr = MemUtil::FindDMAAddy(Offsets::ptr_currentMenu, Offsets::ptr_currentMenuOffsets, GameNotLoaded);
+	
 
 	// Null Pointer Check
-	if (!currentMenuAdr) {
-		_LOG("Invalid Pointer: GetCurrentMenu(" << std::boolalpha << GameNotLoaded << ") @ LVL 3" << std::endl);
+	if (!currentMenuAddr) {
+		//_LOG_SETLEVEL(LogLevel::Error);
+		//_LOG("Invalid Pointer: GetCurrentMenu(" << std::boolalpha << GameNotLoaded << ") @ LVL 3" << std::endl);
 		return "where are we actually";
 	}
 
-	std::string currentMenu((char*)currentMenuAdr);
+	std::string currentMenu((char*)currentMenuAddr);
 	return currentMenu;
 }
 
@@ -658,7 +666,7 @@ void MemHelpers::ToggleDrunkMode(bool enable) {
 		}
 	}
 	else {
-		*(float*)Offsets::ptr_drunkShit = 0.3333333333f;
+		MemUtil::SetStaticValue(Offsets::ptr_drunkShit.Get(), 0.3333333333f, sizeof(float));
 
 		// User originally had the loft off, but then we turned on this mod, so turn the loft back off.
 		if (D3DHooks::ToggleOffLoftWhenDoneWithMod) {
@@ -672,6 +680,11 @@ void MemHelpers::ToggleDrunkMode(bool enable) {
 /// Are we in a song?
 /// </summary>
 bool MemHelpers::IsInSong() {
+	if (!D3DHooks::GameLoaded)
+	{
+		return false;
+	}
+
 	return Contains(GetCurrentMenu(), songModes);
 }
 
@@ -796,7 +809,7 @@ void MemHelpers::SetGreyNoteTimer(float timeInSeconds) {
 /// <returns>The amount of time it takes to go from song 1 to song 2.</returns>
 double MemHelpers::GetNonStopPlayTimer()
 {
-	return *(double*)Offsets::ptr_NonStopPlayPreSongTimer;
+	return *(double*)Offsets::ptr_NonStopPlayPreSongTimer.Get();
 }
 
 /// <summary>

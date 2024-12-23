@@ -1,6 +1,4 @@
 #pragma once
-#include "../CCEffect.hpp"
-#include "../CCEffectList.hpp"
 #include "../../Mods/ExtendedRangeMode.hpp"
 
 namespace CrowdControl::Effects {

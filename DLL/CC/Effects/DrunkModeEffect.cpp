@@ -1,3 +1,4 @@
+#include "../../stdafx.h"
 #include "DrunkModeEffect.hpp"
 
 using namespace CrowdControl::Enums;

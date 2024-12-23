@@ -1,3 +1,4 @@
+#include "../../stdafx.h"
 #include "FYourFCEffect.hpp"
 
 namespace CrowdControl::Effects { // Kills user's current note streak

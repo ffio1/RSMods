@@ -1,3 +1,4 @@
+#include "../stdafx.h"
 #include "D3DHooks.hpp"
 
 /// <summary>
@@ -275,7 +276,7 @@ HRESULT APIENTRY D3DHooks::Hook_DIP(IDirect3DDevice9* pDevice, D3DPRIMITIVETYPE 
 		pCurrNotewayTexture = (IDirect3DTexture9*)pBaseNotewayTexture;
 
 		if (pBaseNotewayTexture) {
-			if (CRCForTexture(pCurrNotewayTexture, pDevice, crc)) {
+			if (D3D::CRCForTexture(pCurrNotewayTexture, pDevice, crc)) {
 
 				// Noteway Texture
 				if (crc == crcNoteLanes && Settings::ReturnNotewayColor("CustomHighwayNumbered") != (std::string)"" && Settings::ReturnNotewayColor("CustomHighwayUnNumbered") != (std::string)"")
@@ -333,7 +334,7 @@ HRESULT APIENTRY D3DHooks::Hook_DIP(IDirect3DDevice9* pDevice, D3DPRIMITIVETYPE 
 			if (!pBaseRainbowTexture)
 				return SHOW_TEXTURE;
 
-			if (CRCForTexture(pCurrRainbowTexture, pDevice, crc)) {
+			if (D3D::CRCForTexture(pCurrRainbowTexture, pDevice, crc)) {
 
 				// Same checksum for stems and accents, because they use the same texture. Bends and slides use the same texture.
 				if (crc == crcStemsAccents || crc == crcBendSlideIndicators)
@@ -430,7 +431,7 @@ HRESULT APIENTRY D3DHooks::Hook_DIP(IDirect3DDevice9* pDevice, D3DPRIMITIVETYPE 
 				if (!pBaseTexture)
 					return SHOW_TEXTURE;
 
-				if (CRCForTexture(pCurrTexture, pDevice, crc)) {
+				if (D3D::CRCForTexture(pCurrTexture, pDevice, crc)) {
 
 					// Same checksum for stems and accents, because they use the same texture. Bends and slides use the same texture.
 					if (crc == crcStemsAccents || crc == crcBendSlideIndicators)  
@@ -456,7 +457,7 @@ HRESULT APIENTRY D3DHooks::Hook_DIP(IDirect3DDevice9* pDevice, D3DPRIMITIVETYPE 
 			if (!pBaseTexture)
 				return REMOVE_TEXTURE;
 
-			if (CRCForTexture(pCurrTexture, pDevice, crc)) {
+			if (D3D::CRCForTexture(pCurrTexture, pDevice, crc)) {
 
 				// Same checksum for stems and accents, because they use the same texture. Bends and slides use the same texture.
 				if (crc == crcStemsAccents || crc == crcBendSlideIndicators)  
@@ -480,7 +481,7 @@ HRESULT APIENTRY D3DHooks::Hook_DIP(IDirect3DDevice9* pDevice, D3DPRIMITIVETYPE 
 			if (!pBaseTexture)
 				return SHOW_TEXTURE;
 
-			if (CRCForTexture(pCurrTexture, pDevice, crc)) {
+			if (D3D::CRCForTexture(pCurrTexture, pDevice, crc)) {
 
 				// Same checksum for stems and accents, because they use the same texture. Bends and slides use the same texture.
 				if (crc == crcStemsAccents || crc == crcBendSlideIndicators)  
@@ -511,7 +512,7 @@ HRESULT APIENTRY D3DHooks::Hook_DIP(IDirect3DDevice9* pDevice, D3DPRIMITIVETYPE 
 			if (!pBaseTexture)
 				return SHOW_TEXTURE;
 
-			if (CRCForTexture(pCurrTexture, pDevice, crc)) {
+			if (D3D::CRCForTexture(pCurrTexture, pDevice, crc)) {
 
 				// Same checksum for stems and accents, because they use the same texture. Bends and slides use the same texture.
 				if (crc == crcStemsAccents || crc == crcBendSlideIndicators) {  
@@ -544,7 +545,7 @@ HRESULT APIENTRY D3DHooks::Hook_DIP(IDirect3DDevice9* pDevice, D3DPRIMITIVETYPE 
 	// Twitch wants to see the user play in Drunk Mode.
 	if (Settings::IsTwitchSettingEnabled("DrunkMode")) {
 		std::uniform_real_distribution<> keepValueWithin(-1.5, 1.5);
-		*(float*)Offsets::ptr_drunkShit = (float)keepValueWithin(rng);
+		MemUtil::SetStaticValue(Offsets::ptr_drunkShit.Get(), (float)keepValueWithin(rng), sizeof(float));
 	}
 
 	// Greenscreen Wall
@@ -594,7 +595,7 @@ HRESULT APIENTRY D3DHooks::Hook_DIP(IDirect3DDevice9* pDevice, D3DPRIMITIVETYPE 
 
 		// There's only two textures in Stage 1 for meshes with Stride = 16, so we could as well skip CRC calcuation and just check if !pBaseTextures[1] and return REMOVE_TEXTURE directly
 		if (pBaseTextures[1]) {  
-			if (CRCForTexture(pCurrTextures[1], pDevice, crc)) {
+			if (D3D::CRCForTexture(pCurrTextures[1], pDevice, crc)) {
 
 				// Purple rectangles + orange line beneath them
 				if (crc == crcSkylinePurple || crc == crcSkylineOrange) { 
@@ -608,7 +609,7 @@ HRESULT APIENTRY D3DHooks::Hook_DIP(IDirect3DDevice9* pDevice, D3DPRIMITIVETYPE 
 		pCurrTextures[0] = (IDirect3DTexture9*)pBaseTextures[0];
 
 		if (pBaseTextures[0]) {
-			if (CRCForTexture(pCurrTextures[0], pDevice, crc)) {
+			if (D3D::CRCForTexture(pCurrTextures[0], pDevice, crc)) {
 
 				// There's a few more of textures used in Stage 0, so doing the same is no-go; Shadow-ish thing in the background + backgrounds of rectangles.
 				if (crc == crcSkylineBackground || crc == crcSkylineShadow) {  
@@ -634,7 +635,7 @@ HRESULT APIENTRY D3DHooks::Hook_DIP(IDirect3DDevice9* pDevice, D3DPRIMITIVETYPE 
 					return REMOVE_TEXTURE;
 
 				// Take a CRC of the texture, and check it against our preset CRCs.
-				if (CRCForTexture(pCurrTextures[1], pDevice, crc)) {
+				if (D3D::CRCForTexture(pCurrTextures[1], pDevice, crc)) {
 					if (crc == crcHeadstock0 || crc == crcHeadstock1 || crc == crcHeadstock2 || crc == crcHeadstock3 || crc == crcHeadstock4)
 						AddToTextureList(headstockTexturePointers, pCurrTextures[1]);
 				}

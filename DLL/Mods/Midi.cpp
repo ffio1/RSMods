@@ -1,3 +1,4 @@
+#include "../stdafx.h"
 #include "Midi.hpp"
 
 // Midi codes should follow this guide: http://fmslogo.sourceforge.net/manual/midi-table.html
